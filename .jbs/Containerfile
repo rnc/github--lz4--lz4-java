@@ -1,0 +1,16 @@
+FROM quay.io/redhat-user-workloads/rhtap-build-tenant/jvm-build-service-builder-images/ubi7:4c6c7ab8f72f0ac01c1b6a899b7c630794e39507
+USER 0
+WORKDIR /root
+RUN mkdir -p /root/project /root/software/settings /original-content/marker
+ENV JBS_DISABLE_CACHE=true
+COPY .jbs/run-build.sh /root
+COPY . /root/project/source/
+RUN ls -lR /root/project ; echo "### DONE"
+RUN /root/run-build.sh
+FROM quay.io/ncross/hacbs-jvm-build-request-processor:dev AS build-request-processor
+RUN mkdir -p /root/project/artifacts
+COPY --from=0 /root/project/ /root/project/
+RUN ls -lR /root/project ; echo "### DONE"
+RUN /opt/jboss/container/java/run/run-java.sh copy-artifacts --source-path=/root/project/source --deploy-path=/root/project/artifacts
+FROM scratch
+COPY --from=1 /root/project/artifacts /
